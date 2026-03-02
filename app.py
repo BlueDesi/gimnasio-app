@@ -1,12 +1,10 @@
 import streamlit as st
 import requests
 
-# Configuración de página para que parezca App
-st.set_page_config(page_title="Acceso Gimnasio", layout="centered")
+# Configuración de página
+st.set_page_config(page_title="Control de Acceso", layout="centered")
 
-st.title("🛡️ Control de Acceso")
-
-# CSS para los cuadros de colores (negro sobre color sólido)
+# CSS Corregido (Parámetro unsafe_allow_html)
 st.markdown("""
     <style>
     .valido {
@@ -16,6 +14,7 @@ st.markdown("""
         border-radius: 20px;
         text-align: center;
         border: 8px solid #000000;
+        margin-bottom: 20px;
     }
     .denegado {
         background-color: #FF0000;
@@ -24,16 +23,21 @@ st.markdown("""
         border-radius: 20px;
         text-align: center;
         border: 8px solid #000000;
+        margin-bottom: 20px;
     }
-    .big-font { font-size: 50px !important; font-weight: 900; }
-    .sub-font { font-size: 25px !important; font-weight: bold; }
+    .big-font { font-size: 50px !important; font-weight: 900; margin: 0; }
+    .sub-font { font-size: 25px !important; font-weight: bold; margin: 10px 0 0 0; }
     </style>
-    """, unsafe_allow_index=True)
+    """, unsafe_allow_html=True)
 
-# Entrada de ID
-user_id = st.number_input("Ingrese ID de Usuario", min_value=0, step=1, format="%d")
+st.title("🛡️ Acceso Gimnasio")
 
-if st.button("VERIFICAR ACCESO", use_container_width=True):
+# Formulario de entrada
+with st.form("validador"):
+    user_id = st.number_input("Ingrese ID de Usuario", min_value=0, step=1, format="%d")
+    submit = st.form_submit_button("VERIFICAR ACCESO", use_container_width=True)
+
+if submit:
     if user_id > 0:
         try:
             # 1. Validar Acceso
@@ -52,15 +56,15 @@ if st.button("VERIFICAR ACCESO", use_container_width=True):
                     st.markdown(f"""
                         <div class="valido">
                             <p class="big-font">VÁLIDO</p>
-                            <p class="sub-font">VENCE: {vence} | DÍAS: {dias}</p>
+                            <p class="sub-font">VENCE: {vence}<br>DÍAS: {dias}</p>
                         </div>
-                    """, unsafe_allow_index=True)
+                    """, unsafe_allow_html=True)
                 else:
-                    st.markdown('<div class="denegado"><p class="big-font">NO VÁLIDO</p><p class="sub-font">SIN MEMBRESÍA</p></div>', unsafe_allow_index=True)
+                    st.markdown('<div class="denegado"><p class="big-font">NO VÁLIDO</p><p class="sub-font">SIN MEMBRESÍA ACTIVA</p></div>', unsafe_allow_html=True)
             else:
-                st.markdown('<div class="denegado"><p class="big-font">NO VÁLIDO</p><p class="sub-font">ACCESO DENEGADO</p></div>', unsafe_allow_index=True)
+                st.markdown('<div class="denegado"><p class="big-font">NO VÁLIDO</p><p class="sub-font">ACCESO DENEGADO</p></div>', unsafe_allow_html=True)
                 
-        except Exception:
-            st.error("Error de conexión con el servidor.")
+        except Exception as e:
+            st.error(f"Error de conexión: {str(e)}")
     else:
         st.warning("Por favor, ingrese un ID válido.")
