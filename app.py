@@ -1,77 +1,101 @@
 import streamlit as st
 import requests
 
-# Configuración de página
-st.set_page_config(page_title="Acceso Gimnasio", layout="centered")
+# Configuración Base de la API (Ajusta el puerto según tu VS)
+API_BASE_URL = "https://localhost:7292/api"
 
-# CSS Profesional: Negro sobre fondo sólido (Verde/Rojo)
+st.set_page_config(page_title="Gimnasio Pro - Gestión", layout="wide")
+
+# --- ESTILOS CSS ---
 st.markdown("""
     <style>
-    .valido {
-        background-color: #00FF00; color: #000000; padding: 30px;
-        border-radius: 15px; text-align: center; border: 8px solid #000000;
-    }
-    .denegado {
-        background-color: #FF0000; color: #000000; padding: 30px;
-        border-radius: 15px; text-align: center; border: 8px solid #000000;
-    }
-    .nombre-socio { font-size: 38px !important; font-weight: 900; text-transform: uppercase; margin-bottom: 5px; }
-    .big-font { font-size: 60px !important; font-weight: 900; margin: 0; }
-    .sub-font { font-size: 26px !important; font-weight: bold; margin-top: 10px; }
-    .stTextInput>div>div>input { font-size: 25px !important; text-align: center; }
+    .valido { background-color: #00FF00; color: #000000; padding: 20px; border-radius: 10px; text-align: center; border: 5px solid #000; }
+    .denegado { background-color: #FF0000; color: #000000; padding: 20px; border-radius: 10px; text-align: center; border: 5px solid #000; }
+    .stButton>button { width: 100%; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🛡️ Control de Acceso Real-Time")
+# --- GESTIÓN DE SESIÓN ---
+if "token" not in st.session_state:
+    st.session_state.token = None
+if "user_role" not in st.session_state:
+    st.session_state.user_role = None
 
-# Formulario de entrada única
-with st.form("validador_principal", clear_on_submit=True):
-    entrada = st.text_input("DNI o ID del Socio", placeholder="Ingrese identificación...")
-    submit = st.form_submit_button("VERIFICAR MEMBRESÍA", use_container_width=True)
-
-if submit and entrada:
-    dni_para_validar = None
-    
-    try:
-        # Lógica de detección: si es ID (menor a 6 dígitos) o DNI
-        if entrada.isdigit() and len(entrada) < 6:
-            # Es un ID, buscamos el DNI del usuario
-            res_user = requests.get(f"http://gimnasio.tryasp.net/api/Usuarios/{entrada}", timeout=5)
-            if res_user.status_code == 200:
-                dni_para_validar = res_user.json().get('dni')
-            else:
-                st.markdown('<div class="denegado"><p class="big-font">ERROR</p><p class="sub-font">ID DE USUARIO NO ENCONTRADO</p></div>', unsafe_allow_html=True)
-        else:
-            # Asumimos que es DNI directamente
-            dni_para_validar = entrada
-
-        # Validación final por DNI (la única que confirma membresía real)
-        if dni_para_validar:
-            res_memb = requests.get(f"http://gimnasio.tryasp.net/api/Membresias/validar/{dni_para_validar}", timeout=5)
-            
-            if res_memb.status_code == 200:
-                d = res_memb.json()
-                nombre = f"{d.get('nombre') or ''} {d.get('apellido') or ''}".strip()
-                dias = d.get('diasRestantes', 0)
-                
-                if d.get("accesoPermitido"):
-                    st.markdown(f"""<div class="valido">
-                        <p class="nombre-socio">{nombre or "SOCIO ACTIVO"}</p>
-                        <p class="big-font">VÁLIDO</p>
-                        <p class="sub-font">DÍAS RESTANTES: {dias}</p>
-                    </div>""", unsafe_allow_html=True)
+# --- LÓGICA DE LOGIN ---
+def login():
+    st.title("🔐 Ingreso al Sistema")
+    with st.form("login_form"):
+        email = st.text_input("Email")
+        password = st.text_input("Password", type="password")
+        btn_login = st.form_submit_button("ENTRAR")
+        
+        if btn_login:
+            try:
+                # verify=False solo para desarrollo si usas certificados self-signed
+                res = requests.post(f"{API_BASE_URL}/Usuarios/login", 
+                                    json={"email": email, "password": password}, verify=False)
+                if res.status_code == 200:
+                    data = res.json()
+                    st.session_state.token = data["token"]
+                    st.session_state.user_role = data["usuario"]["rolNombre"]
+                    st.rerun()
                 else:
-                    msg = d.get('mensaje') or "SIN MEMBRESÍA ACTIVA"
-                    st.markdown(f"""<div class="denegado">
-                        <p class="nombre-socio">{nombre or "Socio Inactivo"}</p>
-                        <p class="big-font">NO VÁLIDO</p>
-                        <p class="sub-font">{msg.upper()}</p>
-                    </div>""", unsafe_allow_html=True)
-            else:
-                st.error("Error al consultar el servicio de membresías.")
-                
-    except Exception as e:
-        st.error(f"Falla de comunicación con el servidor.")
+                    st.error("Credenciales incorrectas")
+            except Exception as e:
+                st.error(f"Error de conexión: {e}")
 
-st.divider()
-st.caption("Configuración: Mostrador / Tablet / Mobile - API v3.0")
+# --- PANTALLA PRINCIPAL ---
+def main_app():
+    st.sidebar.title(f"👤 {st.session_state.user_role}")
+    if st.sidebar.button("Cerrar Sesión"):
+        st.session_state.token = None
+        st.rerun()
+
+    tab1, tab2 = st.tabs(["🛡️ Control de Acceso", "🔍 Buscador de Socios"])
+
+    # HEADER PARA PETICIONES AUTORIZADAS
+    headers = {"Authorization": f"Bearer {st.session_state.token}"}
+
+    # --- TAB 1: VALIDACIÓN DE ACCESO ---
+    with tab1:
+        st.subheader("Verificación de Membresía")
+        with st.form("validador"):
+            entrada_id = st.text_input("Ingrese ID del Socio")
+            btn_check = st.form_submit_button("VALIDAR")
+            
+            if btn_check and entrada_id:
+                res = requests.get(f"{API_BASE_URL}/Usuarios/{entrada_id}/validar-acceso-id", 
+                                   headers=headers, verify=False)
+                if res.status_code == 200:
+                    info = res.json()
+                    if info["status"] == "Concedido":
+                        st.markdown(f'<div class="valido"><h1>ACCESO PERMITIDO</h1><p>{info["mensaje"]}</p></div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown(f'<div class="denegado"><h1>ACCESO DENEGADO</h1><p>{info["mensaje"]}</p></div>', unsafe_allow_html=True)
+                else:
+                    st.warning("No se pudo validar. Verifique el ID.")
+
+    # --- TAB 2: BUSCADOR (SOLO ADMIN Y EMPLEADO) ---
+    with tab2:
+        if st.session_state.user_role in ["Admin", "Empleado"]:
+            st.subheader("Buscador de Socios Activos")
+            res_socios = requests.get(f"{API_BASE_URL}/Usuarios/socios", headers=headers, verify=False)
+            
+            if res_socios.status_code == 200:
+                socios = res_socios.json()
+                busqueda = st.text_input("Filtrar por nombre o DNI")
+                
+                # Filtrado simple en frontend
+                filtered = [s for s in socios if busqueda.lower() in s["nombre"].lower() or busqueda in s["dni"]]
+                
+                st.table(filtered)
+            else:
+                st.error("No tienes permisos para ver esta lista.")
+        else:
+            st.info("🔒 El buscador solo está disponible para personal del gimnasio.")
+
+# Renderizar Login o App
+if st.session_state.token is None:
+    login()
+else:
+    main_app()
