@@ -1,18 +1,38 @@
 import streamlit as st
 import requests
-import time
+from datetime import datetime
 
 # --- CONFIGURACIÓN ---
 API_BASE_URL = "https://gimnasio.tryasp.net/api"
 st.set_page_config(page_title="Gimnasio Pro Ultra", layout="wide", page_icon="🏋️‍♂️")
 
-# --- ESTILOS CSS ---
+# --- ESTILOS CSS (INCLUYE ALTO CONTRASTE PARA MOLINETE) ---
 st.markdown("""
     <style>
-    .main-header { font-size: 35px; font-weight: bold; color: #1E88E5; padding-bottom: 10px; }
-    .valido { background-color: #2ecc71; color: white; padding: 25px; border-radius: 15px; text-align: center; border: 3px solid #27ae60; }
-    .denegado { background-color: #e74c3c; color: white; padding: 25px; border-radius: 15px; text-align: center; border: 3px solid #c0392b; }
-    .metric-card { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; border: 1px solid #eee; }
+    .main-header { font-size: 30px; font-weight: bold; color: #1E88E5; }
+    
+    /* Estilo Molinete - Alto Contraste */
+    .molinete-container {
+        background-color: #87CEEB; 
+        color: #000000;
+        padding: 40px;
+        border-radius: 20px;
+        text-align: center;
+        border: 5px solid #000000;
+        margin-top: 20px;
+    }
+    .molinete-nombre { font-size: 50px; font-weight: 900; text-transform: uppercase; margin-bottom: 10px; }
+    .molinete-dias { font-size: 40px; font-weight: 700; }
+    
+    /* Cards Generales */
+    .metric-card {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        text-align: center;
+        border: 1px solid #ddd;
+    }
     .stButton>button { border-radius: 8px; font-weight: bold; height: 3em; }
     </style>
 """, unsafe_allow_html=True)
@@ -20,273 +40,112 @@ st.markdown("""
 # --- INICIALIZACIÓN ---
 if "token" not in st.session_state:
     st.session_state.token = None
-
 if "user_data" not in st.session_state:
     st.session_state.user_data = {}
 
-if "ultimo_id_creado" not in st.session_state:
-    st.session_state.ultimo_id_creado = 1
-
-
 # --- HELPER API ---
 def api_call(method, endpoint, data=None):
-
     headers = {
         "Authorization": f"Bearer {st.session_state.token}",
         "Content-Type": "application/json",
         "accept": "*/*"
     }
-
     url = f"{API_BASE_URL}/{endpoint}"
-
     try:
-        if method == "POST":
-            return requests.post(url, json=data, headers=headers)
-
-        if method == "GET":
-            return requests.get(url, headers=headers)
-
+        if method == "POST": return requests.post(url, json=data, headers=headers)
+        if method == "GET": return requests.get(url, headers=headers)
     except Exception as e:
-        st.error(f"Error de red: {e}")
+        st.error(f"Error: {e}")
         return None
 
-
-# --- LOGIN ---
+# --- VISTA: LOGIN ---
 def login_page():
-
-    st.markdown("<div class='main-header'>🏋️‍♂️ Gimnasio Pro</div>", unsafe_allow_html=True)
-
-    col1, col2, col3 = st.columns([1,1.5,1])
-
-    with col2:
-
+    st.markdown("<h1 style='text-align: center;'>🏋️‍♂️ Sistema de Gimnasio</h1>", unsafe_allow_html=True)
+    _, col, _ = st.columns([1, 1.2, 1])
+    with col:
         with st.container(border=True):
-
-            email = st.text_input("Email").strip()
+            email = st.text_input("Email")
             password = st.text_input("Contraseña", type="password")
-
             if st.button("INGRESAR", use_container_width=True):
-
-                res = requests.post(
-                    f"{API_BASE_URL}/Usuarios/login",
-                    json={"email": email, "password": password}
-                )
-
+                res = requests.post(f"{API_BASE_URL}/Usuarios/login", json={"email": email, "password": password})
                 if res.status_code == 200:
-
                     data = res.json()
-
                     st.session_state.token = data["token"]
                     st.session_state.user_data = data["usuario"]
-
                     st.rerun()
-
                 else:
-                    st.error("Credenciales incorrectas")
+                    st.error("Acceso denegado")
 
-
-# --- DASHBOARD SOCIO ---
+# --- VISTA: SOCIO ---
 def socio_dashboard():
-
-    st.markdown("<div class='main-header'>🏋️‍♂️ Mi Membresía</div>", unsafe_allow_html=True)
-
-    with st.sidebar:
-
-        st.markdown(f"### 👋 {st.session_state.user_data.get('nombre')}")
-
-        if st.button("🚪 Salir", use_container_width=True):
-            st.session_state.token = None
-            st.rerun()
-
-    user_id = st.session_state.user_data.get("id")
-
-    res = api_call("GET", f"Usuarios/{user_id}")
-
+    user = st.session_state.user_data
+    st.markdown(f"<div class='main-header'>Hola, {user.get('nombre')}</div>", unsafe_allow_html=True)
+    
+    res = api_call("GET", f"Usuarios/{user.get('id')}")
     if res and res.status_code == 200:
+        d = res.json()
+        col1, col2 = st.columns(2)
+        vencido = not d.get("membresiaVigente", False)
+        color = "#e74c3c" if vencido else "#2ecc71"
+        
+        col1.markdown(f"<div class='metric-card'>Estado<br><h2 style='color:{color}'>{'VENCIDA' if vencido else 'ACTIVA'}</h2></div>", unsafe_allow_html=True)
+        col2.markdown(f"<div class='metric-card'>Días Restantes<br><h2>{d.get('diasRestantes', 0)}</h2></div>", unsafe_allow_html=True)
 
-        data = res.json()
-
-        st.write("### Estado de tu membresía")
-
-        c1, c2 = st.columns(2)
-
-        with c1:
-
-            dias = data.get("diasRestantes", 0)
-
-            color = "#2ecc71" if dias > 5 else "#e74c3c"
-
-            st.markdown(
-                f'<div class="metric-card">⏳ Días Restantes<br><h1 style="color:{color}">{dias}</h1></div>',
-                unsafe_allow_html=True
-            )
-
-        with c2:
-
-            vence = data.get("fechaVencimiento")
-
-            fecha = vence.split("T")[0] if vence else "N/A"
-
-            st.markdown(
-                f'<div class="metric-card">📅 Vencimiento<br><h2>{fecha}</h2></div>',
-                unsafe_allow_html=True
-            )
-
-
-# --- DASHBOARD ADMIN / EMPLEADO ---
+# --- VISTA: ADMIN / EMPLEADO ---
 def admin_dashboard():
-
     with st.sidebar:
-
-        st.markdown(f"### 👋 {st.session_state.user_data.get('nombre')}")
-
-        menu = st.radio("MENÚ", ["🏢 Molinete", "👥 Socios", "➕ Alta Rápida"])
-
-        if st.button("🚪 Salir", use_container_width=True):
+        st.title("Gestión")
+        menu = st.radio("Menú", ["Molinete", "Socios", "Alta Membresía"])
+        if st.button("Cerrar Sesión"):
             st.session_state.token = None
             st.rerun()
 
-    if menu == "🏢 Molinete":
-
+    if menu == "Molinete":
         st.header("🛡️ Control de Acceso")
-
-        with st.container(border=True):
-
-            entrada = st.text_input("Ingrese ID del Socio")
-
-            if st.button("VALIDAR ENTRADA", use_container_width=True):
-
-                if entrada:
-
-                    with st.spinner("Verificando membresía..."):
-
-                        res_val = api_call("GET", f"Usuarios/{entrada}/validar-acceso-id")
-
-                        if res_val and res_val.status_code == 200:
-
-                            val_data = res_val.json()
-
-                            res_user = api_call("GET", f"Usuarios/{entrada}")
-
-                            user_info = res_user.json() if res_user and res_user.status_code == 200 else {}
-
-                            if val_data.get("status") == "Concedido":
-
-                                st.markdown(
-                                    f'<div class="valido">✅ ACCESO PERMITIDO<br>{val_data["mensaje"]}</div>',
-                                    unsafe_allow_html=True
-                                )
-
-                                st.balloons()
-
-                            else:
-
-                                st.markdown(
-                                    f'<div class="denegado">❌ ACCESO RECHAZADO<br>{val_data["mensaje"]}</div>',
-                                    unsafe_allow_html=True
-                                )
-
+        dni_input = st.text_input("Ingrese DNI del Socio", placeholder="Ej: 40123456")
+        
+        if st.button("VALIDAR ENTRADA", use_container_width=True):
+            if dni_input:
+                res = api_call("GET", f"Usuarios/socios") # Buscamos en la lista de socios
+                if res and res.status_code == 200:
+                    socio = next((s for s in res.json() if s['dni'] == dni_input), None)
+                    
+                    if socio:
+                        # Bloque de Alto Contraste
+                        st.markdown(f"""
+                            <div class="molinete-container">
+                                <div class="molinete-nombre">{socio['nombre']} {socio['apellido']}</div>
+                                <div class="molinete-dias">DÍAS RESTANTES: {socio['diasRestantes']}</div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        if socio['membresiaVigente']:
+                            st.balloons()
                         else:
-                            st.error("Socio no encontrado.")
+                            st.error("ATENCIÓN: Membresía Vencida")
+                    else:
+                        st.warning("DNI no encontrado en el sistema.")
 
-    elif menu == "👥 Socios":
-
-        st.header("🔍 Buscador")
-
+    elif menu == "Socios":
+        st.header("👥 Listado de Socios")
         res = api_call("GET", "Usuarios/socios")
+        if res: st.dataframe(res.json(), use_container_width=True)
 
-        if res and res.status_code == 200:
+    elif menu == "Alta Membresía":
+        st.header("➕ Nueva Membresía")
+        with st.form("form_mem"):
+            u_id = st.number_input("ID de Socio", min_value=1)
+            meses = st.slider("Meses a acreditar", 1, 12, 1)
+            if st.form_submit_button("Activar"):
+                r = api_call("POST", "Membresias", {"usuarioId": int(u_id), "meses": meses})
+                if r and r.status_code in [200, 201]: st.success("¡Membresía Activada!")
 
-            search = st.text_input("Filtrar por nombre o DNI").lower()
-
-            filtered = [
-                s for s in res.json()
-                if search in s['nombre'].lower() or search in s['dni']
-            ]
-
-            st.dataframe(filtered, use_container_width=True, hide_index=True)
-
-    elif menu == "➕ Alta Rápida":
-
-        st.header("⚡ Registro de Socio")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-
-            with st.form("form_user"):
-
-                st.subheader("1. Usuario")
-
-                n = st.text_input("Nombre")
-                a = st.text_input("Apellido")
-                d = st.text_input("DNI")
-                e = st.text_input("Email")
-                p = st.text_input("Password", type="password")
-
-                rol = st.selectbox("Rol", ["Socio","Empleado","Admin"], index=0)
-
-                roles_map = {"Admin":1,"Empleado":2,"Socio":3}
-
-                if st.form_submit_button("REGISTRAR"):
-
-                    r = api_call(
-                        "POST",
-                        "Usuarios",
-                        {
-                            "nombre":n,
-                            "apellido":a,
-                            "dni":d,
-                            "email":e,
-                            "password":p,
-                            "idRol":roles_map[rol],
-                            "fechaNacimiento":"1990-01-01"
-                        }
-                    )
-
-                    if r and r.status_code in [200,201]:
-
-                        st.session_state.ultimo_id_creado = r.json().get("id")
-
-                        st.success(f"Creado ID: {st.session_state.ultimo_id_creado}")
-
-        with col2:
-
-            with st.form("form_mem"):
-
-                st.subheader("2. Membresía")
-
-                u_id = st.number_input("ID Socio", value=st.session_state.ultimo_id_creado)
-
-                tipo = st.selectbox("Plan", ["Mensual","Trimestral","Anual"])
-
-                if st.form_submit_button("ACTIVAR"):
-
-                    r_m = api_call(
-                        "POST",
-                        "Membresias",
-                        {
-                            "usuarioId":u_id,
-                            "tipo":tipo,
-                            "fechaInicio":time.strftime("%Y-%m-%d")
-                        }
-                    )
-
-                    if r_m and r_m.status_code in [200,201]:
-                        st.success("¡Activada!")
-
-
-# --- CONTROL DE ROLES ---
-
+# --- RUTEO ---
 if st.session_state.token is None:
-
     login_page()
-
 else:
-
-    rol = st.session_state.user_data.get("idRol")
-
-    if rol == 3:
-        socio_dashboard()
-    else:
+    rol = st.session_state.user_data.get("rolNombre", "").lower()
+    if rol in ["admin", "empleado"]:
         admin_dashboard()
+    else:
+        socio_dashboard()
