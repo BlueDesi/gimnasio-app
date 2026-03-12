@@ -77,53 +77,62 @@ def login_page():
                     st.error("Acceso denegado")
 
 # --- VISTA: SOCIO ---
+# --- VISTA: SOCIO ---
+# --- VISTA: SOCIO ---
 def socio_dashboard():
     user = st.session_state.user_data
     st.markdown(f"<div class='main-header'>Hola, {user.get('nombre')}</div>", unsafe_allow_html=True)
     
     try:
-        # 1. Llamada a la API
-        res = api_call("GET", f"Usuarios/{user.get('id')}")
+        # 1. Cambiamos al endpoint de Membresias para evitar el error 403 de Usuarios
+        res = api_call("GET", f"Membresias/usuario/{user.get('id')}")
         
-        # SI LA API RESPONDE ERROR (Como ese HTML que me pasaste)
         if res.status_code != 200:
-            st.error(f"Error de API: {res.status_code}")
-            # Esto te va a mostrar el error exacto si el servidor falla
+            st.error(f"Error de API ({res.status_code}): No se pudo obtener la membresía.")
             return 
 
-        d = res.json()
+        datos_membresia = res.json()
         
-        # 2. Extraemos los datos con valores por defecto para que no explote
-        vigente = d.get("membresiaVigente", False)
-        dias = d.get("diasRestantes", 0)
-        
-        # Lógica de colores
-        color_estado = "#2ecc71" if vigente else "#e74c3c"
-        color_dias = "#f1c40f" if (vigente and dias <= 5) else color_estado
-        
-        col1, col2 = st.columns(2)
-        
-        col1.markdown(
-            f"<div class='metric-card'>Estado de Membresía<br>"
-            f"<h2 style='color:{color_estado}'>{'ACTIVA' if vigente else 'VENCIDA'}</h2></div>", 
-            unsafe_allow_html=True
-        )
-        
-        col2.markdown(
-            f"<div class='metric-card'>Días Restantes<br>"
-            f"<h2 style='color:{color_dias}'>{dias}</h2></div>", 
-            unsafe_allow_html=True
-        )
+        # Como el endpoint devuelve una LISTA [], tomamos el primer elemento si existe
+        if isinstance(datos_membresia, list) and len(datos_membresia) > 0:
+            d = datos_membresia[0]
+            
+            # Extraemos datos según tu Swagger
+            vigente = d.get("activa", False)
+            dias = d.get("diasRestantes", 0)
+            f_vencimiento = d.get("fechaVencimiento")
+            
+            # Lógica de colores dinámica
+            color_estado = "#2ecc71" if vigente else "#e74c3c"
+            color_dias = "#f1c40f" if (vigente and 0 < dias <= 5) else color_estado
+            
+            col1, col2 = st.columns(2)
+            
+            col1.markdown(
+                f"<div class='metric-card'>Estado de Membresía<br>"
+                f"<h2 style='color:{color_estado}'>{'ACTIVA' if vigente else 'VENCIDA'}</h2></div>", 
+                unsafe_allow_html=True
+            )
+            
+            col2.markdown(
+                f"<div class='metric-card'>Días Restantes<br>"
+                f"<h2 style='color:{color_dias}'>{dias}</h2></div>", 
+                unsafe_allow_html=True
+            )
 
-        if d.get("fechaVencimiento"):
-            fecha_venc = d.get("fechaVencimiento").split("T")[0]
-            st.caption(f"Tu suscripción vence el: {fecha_venc}")
+            if f_vencimiento:
+                fecha_formateada = f_vencimiento.split("T")[0]
+                st.caption(f"Tu suscripción vence el: **{fecha_formateada}**")
+        
+        else:
+            st.warning("No se encontró ninguna membresía asociada a tu cuenta.")
 
     except Exception as e:
-        # 3. Si algo falla, esto te dirá QUÉ es lo que falla
-        st.error(f"Error en el Dashboard: {e}")
-        # Descomenta la línea de abajo para ver la respuesta cruda de la API si falla
-        # st.code(res.text)
+        st.error(f"Error crítico en el Dashboard: {e}")
+        # En caso de error, mostramos la respuesta para debuguear
+        if 'res' in locals():
+            with st.expander("Ver detalle técnico"):
+                st.code(res.text)
 # --- VISTA: ADMIN / EMPLEADO ---
 def admin_dashboard():
     with st.sidebar:
@@ -182,5 +191,6 @@ else:
         admin_dashboard()
     else:
         socio_dashboard()
+
 
 
