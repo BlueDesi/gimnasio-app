@@ -77,19 +77,50 @@ def login_page():
                     st.error("Acceso denegado")
 
 # --- VISTA: SOCIO ---
+# --- VISTA: SOCIO ---
 def socio_dashboard():
     user = st.session_state.user_data
     st.markdown(f"<div class='main-header'>Hola, {user.get('nombre')}</div>", unsafe_allow_html=True)
     
+    # Llamamos a la API para obtener los datos actualizados del usuario
     res = api_call("GET", f"Usuarios/{user.get('id')}")
+    
     if res and res.status_code == 200:
         d = res.json()
-        col1, col2 = st.columns(2)
-        vencido = not d.get("membresiaVigente", False)
-        color = "#e74c3c" if vencido else "#2ecc71"
         
-        col1.markdown(f"<div class='metric-card'>Estado<br><h2 style='color:{color}'>{'VENCIDA' if vencido else 'ACTIVA'}</h2></div>", unsafe_allow_html=True)
-        col2.markdown(f"<div class='metric-card'>Días Restantes<br><h2>{d.get('diasRestantes', 0)}</h2></div>", unsafe_allow_html=True)
+        # Extraemos los datos
+        vigente = d.get("membresiaVigente", False)
+        dias = d.get("diasRestantes", 0)
+        
+        # Lógica de colores dinámica
+        if not vigente:
+            color_estado = "#e74c3c"  # Rojo (Vencido)
+            color_dias = "#e74c3c"
+        elif dias <= 5:
+            color_estado = "#2ecc71"  # Verde (Activo)
+            color_dias = "#f1c40f"    # Amarillo (Pocos días)
+        else:
+            color_estado = "#2ecc71"  # Verde
+            color_dias = "#2ecc71"    # Verde
+        
+        col1, col2 = st.columns(2)
+        
+        col1.markdown(
+            f"<div class='metric-card'>Estado de Membresía<br>"
+            f"<h2 style='color:{color_estado}'>{'ACTIVA' if vigente else 'VENCIDA'}</h2></div>", 
+            unsafe_allow_html=True
+        )
+        
+        col2.markdown(
+            f"<div class='metric-card'>Días Restantes<br>"
+            f"<h2 style='color:{color_dias}'>{dias}</h2></div>", 
+            unsafe_allow_html=True
+        )
+
+        # Opcional: Mostrar fecha exacta de vencimiento si existe
+        if d.get("fechaVencimiento"):
+            fecha_venc = d.get("fechaVencimiento").split("T")[0]
+            st.caption(f"Tu suscripción vence el: {fecha_venc}")
 
 # --- VISTA: ADMIN / EMPLEADO ---
 def admin_dashboard():
@@ -149,3 +180,4 @@ else:
         admin_dashboard()
     else:
         socio_dashboard()
+
