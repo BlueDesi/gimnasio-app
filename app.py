@@ -80,59 +80,41 @@ def login_page():
 # --- VISTA: SOCIO ---
 # --- VISTA: SOCIO ---
 def socio_dashboard():
-    user = st.session_state.user_data
-    st.markdown(f"<div class='main-header'>Hola, {user.get('nombre')}</div>", unsafe_allow_html=True)
+    # 1. Recuperamos el objeto que se guardó en el login
+    # IMPORTANTE: Verificá si lo guardaste como 'user_data' o 'usuario'
+    user = st.session_state.get('user_data', {})
     
-    try:
-        # 1. Cambiamos al endpoint de Membresias para evitar el error 403 de Usuarios
-        res = api_call("GET", f"Membresias/usuario/{user.get('id')}")
-        
-        if res.status_code != 200:
-            st.error(f"Error de API ({res.status_code}): No se pudo obtener la membresía.")
-            return 
+    # El Swagger mostró que los datos vienen dentro de una clave 'usuario' 
+    # si guardaste la respuesta completa del login.
+    detalles = user.get('usuario', user) 
 
-        datos_membresia = res.json()
-        
-        # Como el endpoint devuelve una LISTA [], tomamos el primer elemento si existe
-        if isinstance(datos_membresia, list) and len(datos_membresia) > 0:
-            d = datos_membresia[0]
-            
-            # Extraemos datos según tu Swagger
-            vigente = d.get("activa", False)
-            dias = d.get("diasRestantes", 0)
-            f_vencimiento = d.get("fechaVencimiento")
-            
-            # Lógica de colores dinámica
-            color_estado = "#2ecc71" if vigente else "#e74c3c"
-            color_dias = "#f1c40f" if (vigente and 0 < dias <= 5) else color_estado
-            
-            col1, col2 = st.columns(2)
-            
-            col1.markdown(
-                f"<div class='metric-card'>Estado de Membresía<br>"
-                f"<h2 style='color:{color_estado}'>{'ACTIVA' if vigente else 'VENCIDA'}</h2></div>", 
-                unsafe_allow_html=True
-            )
-            
-            col2.markdown(
-                f"<div class='metric-card'>Días Restantes<br>"
-                f"<h2 style='color:{color_dias}'>{dias}</h2></div>", 
-                unsafe_allow_html=True
-            )
+    st.markdown(f"<div class='main-header'>Hola, {detalles.get('nombre')}</div>", unsafe_allow_html=True)
 
-            if f_vencimiento:
-                fecha_formateada = f_vencimiento.split("T")[0]
-                st.caption(f"Tu suscripción vence el: **{fecha_formateada}**")
-        
-        else:
-            st.warning("No se encontró ninguna membresía asociada a tu cuenta.")
+    # 2. Usamos los datos que YA TRAE el login (según tu Swagger)
+    vigente = detalles.get("membresiaVigente", False)
+    dias = detalles.get("diasRestantes", 0)
+    f_vencimiento = detalles.get("fechaVencimiento")
 
-    except Exception as e:
-        st.error(f"Error crítico en el Dashboard: {e}")
-        # En caso de error, mostramos la respuesta para debuguear
-        if 'res' in locals():
-            with st.expander("Ver detalle técnico"):
-                st.code(res.text)
+    # Colores
+    color_estado = "#2ecc71" if vigente else "#e74c3c"
+    color_dias = "#f1c40f" if (vigente and 0 < dias <= 5) else color_estado
+    
+    col1, col2 = st.columns(2)
+    
+    col1.markdown(
+        f"<div class='metric-card'>Estado de Membresía<br>"
+        f"<h2 style='color:{color_estado}'>{'ACTIVA' if vigente else 'VENCIDA'}</h2></div>", 
+        unsafe_allow_html=True
+    )
+    
+    col2.markdown(
+        f"<div class='metric-card'>Días Restantes<br>"
+        f"<h2 style='color:{color_dias}'>{dias}</h2></div>", 
+        unsafe_allow_html=True
+    )
+
+    if f_vencimiento:
+        st.caption(f"Vence el: {f_vencimiento.split('T')[0]}")
 # --- VISTA: ADMIN / EMPLEADO ---
 def admin_dashboard():
     with st.sidebar:
@@ -191,6 +173,7 @@ else:
         admin_dashboard()
     else:
         socio_dashboard()
+
 
 
 
