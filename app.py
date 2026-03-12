@@ -2,8 +2,7 @@ import streamlit as st
 import requests
 
 # Configuración Base de la API (Ajusta el puerto según tu VS)
-API_BASE_URL = "https://localhost:7292/api"
-
+API_BASE_URL = "http://gimnasio.tryasp.net/api"
 st.set_page_config(page_title="Gimnasio Pro - Gestión", layout="wide")
 
 # --- ESTILOS CSS ---
@@ -99,3 +98,4 @@ if st.session_state.token is None:
     login()
 else:
     main_app()
+
