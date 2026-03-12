@@ -22,24 +22,35 @@ if "user_role" not in st.session_state:
 
 # --- LÓGICA DE LOGIN ---
 def login():
-    st.title("🔐 Ingreso al Sistema")
+   st.title("🔐 Ingreso al Sistema")
     with st.form("login_form"):
-        email = st.text_input("Email")
+        # Usamos .strip() para evitar espacios accidentales al final del email
+        email = st.text_input("Email").strip()
         password = st.text_input("Password", type="password")
         btn_login = st.form_submit_button("ENTRAR")
         
         if btn_login:
             try:
-                # verify=False solo para desarrollo si usas certificados self-signed
-                res = requests.post(f"{API_BASE_URL}/Usuarios/login", 
-                                    json={"email": email, "password": password}, verify=False)
+                # 1. Intentamos la petición
+                # Nota: Prueba con "email" (minúscula) primero, si falla, "Email"
+                payload = {"email": email, "password": password}
+                res = requests.post(f"{API_BASE_URL}/Usuarios/login", json=payload)
+
                 if res.status_code == 200:
                     data = res.json()
+                    
+                    # 2. Guardamos los datos según la estructura exacta que me pasaste
                     st.session_state.token = data["token"]
                     st.session_state.user_role = data["usuario"]["rolNombre"]
+                    
+                    st.success(f"¡Hola {data['usuario']['nombre']}!")
                     st.rerun()
+                
+                elif res.status_code == 401:
+                    st.error("Email o contraseña incorrectos (401).")
                 else:
-                    st.error("Credenciales incorrectas")
+                    st.error(f"Error {res.status_code}: {res.text}")
+                    
             except Exception as e:
                 st.error(f"Error de conexión: {e}")
 
@@ -98,4 +109,5 @@ if st.session_state.token is None:
     login()
 else:
     main_app()
+
 
