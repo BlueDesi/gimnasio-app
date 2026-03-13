@@ -79,42 +79,38 @@ def login_page():
 # --- VISTA: SOCIO ---
 # --- VISTA: SOCIO ---
 # --- VISTA: SOCIO ---
+# --- VISTA: SOCIO ---
 def socio_dashboard():
-    # 1. Recuperamos el objeto que se guardó en el login
-    # IMPORTANTE: Verificá si lo guardaste como 'user_data' o 'usuario'
     user = st.session_state.get('user_data', {})
-    
-    # El Swagger mostró que los datos vienen dentro de una clave 'usuario' 
-    # si guardaste la respuesta completa del login.
     detalles = user.get('usuario', user) 
 
     st.markdown(f"<div class='main-header'>Hola, {detalles.get('nombre')}</div>", unsafe_allow_html=True)
 
-    # 2. Usamos los datos que YA TRAE el login (según tu Swagger)
     vigente = detalles.get("membresiaVigente", False)
     dias = detalles.get("diasRestantes", 0)
     f_vencimiento = detalles.get("fechaVencimiento")
 
-    # Colores
+    # Colores dinámicos solo para el valor (h2), el resto queda en negro
     color_estado = "#2ecc71" if vigente else "#e74c3c"
     color_dias = "#f1c40f" if (vigente and 0 < dias <= 5) else color_estado
     
     col1, col2 = st.columns(2)
     
+    # Se agregó style='color: #000000' a los textos de etiqueta
     col1.markdown(
-        f"<div class='metric-card'>Estado de Membresía<br>"
+        f"<div class='metric-card'><span style='color: #000000; font-weight: bold;'>Estado de Membresía</span><br>"
         f"<h2 style='color:{color_estado}'>{'ACTIVA' if vigente else 'VENCIDA'}</h2></div>", 
         unsafe_allow_html=True
     )
     
     col2.markdown(
-        f"<div class='metric-card'>Días Restantes<br>"
+        f"<div class='metric-card'><span style='color: #000000; font-weight: bold;'>Días Restantes</span><br>"
         f"<h2 style='color:{color_dias}'>{dias}</h2></div>", 
         unsafe_allow_html=True
     )
 
     if f_vencimiento:
-        st.caption(f"Vence el: {f_vencimiento.split('T')[0]}")
+        st.markdown(f"<p style='color: #000000; font-size: 0.8em;'>Vence el: {f_vencimiento.split('T')[0]}</p>", unsafe_allow_html=True)
 # --- VISTA: ADMIN / EMPLEADO ---
 def admin_dashboard():
     with st.sidebar:
@@ -173,6 +169,7 @@ else:
         admin_dashboard()
     else:
         socio_dashboard()
+
 
 
 
