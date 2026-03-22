@@ -214,20 +214,43 @@ def admin_dashboard():
                     if not socio['membresiaVigente']: st.error("ACCESO DENEGADO - MEMBRESÍA VENCIDA")
                 else: st.error("Socio no encontrado.")
 
-    elif menu == "Lista de Miembros":
-        st.header("Visualización de Socios")
-        res = api_call("GET", "Usuarios/socios")
-        if res and res.status_code == 200:
-            df = pd.DataFrame(res.json())
-            c1, c2 = st.columns([1, 2])
-            filtro = c1.selectbox("Filtrar por Estado", ["Todos", "Activos", "Inactivos"])
-            busqueda = c2.text_input("🔍 Buscar por ID, DNI o Apellido").lower()
-            if filtro == "Activos": df = df[df['membresiaVigente'] == True]
-            elif filtro == "Inactivos": df = df[df['membresiaVigente'] == False]
-            if busqueda:
-                df = df[df['id'].astype(str).str.contains(busqueda) | df['dni'].astype(str).str.contains(busqueda) | df['apellido'].str.lower().str.contains(busqueda)]
-            st.dataframe(df[['id', 'nombre', 'apellido', 'dni', 'email', 'membresiaVigente', 'diasRestantes']], use_container_width=True)
+   elif menu == "Lista de Miembros":
+        st.header("Visualización de Personal y Socios")
+        
+        # Selector de categoría para filtrar qué lista traer desde la API
+        categoria = st.tabs(["Socios", "Empleados", "Administradores"])
+        
+        with categoria[0]:
+            st.subheader("Listado de Socios")
+            res = api_call("GET", "Usuarios/socios")
+            if res and res.status_code == 200:
+                df = pd.DataFrame(res.json())
+                if not df.empty:
+                    busqueda = st.text_input("🔍 Buscar Socio (DNI o Apellido)").lower()
+                    if busqueda:
+                        df = df[df['dni'].astype(str).str.contains(busqueda) | df['apellido'].str.lower().str.contains(busqueda)]
+                    st.dataframe(df[['id', 'nombre', 'apellido', 'dni', 'email', 'membresiaVigente', 'diasRestantes']], use_container_width=True)
+                else: st.info("No hay socios registrados.")
 
+        with categoria[1]:
+            st.subheader("Equipo de Empleados")
+            res_emp = api_call("GET", "Usuarios/empleados")
+            if res_emp and res_emp.status_code == 200:
+                df_emp = pd.DataFrame(res_emp.json())
+                if not df_emp.empty:
+                    # Mostramos datos relevantes para el staff
+                    st.table(df_emp[['id', 'nombre', 'apellido', 'email', 'rolNombre']])
+                else: st.info("No hay empleados registrados.")
+
+        with categoria[2]:
+            st.subheader("Administradores del Sistema")
+            res_adm = api_call("GET", "Usuarios/admins")
+            if res_adm and res_adm.status_code == 200:
+                df_adm = pd.DataFrame(res_adm.json())
+                if not df_adm.empty:
+                    # Usamos st.table para una vista más limpia de pocos registros
+                    st.table(df_adm[['id', 'nombre', 'apellido', 'email', 'rolNombre']])
+                else: st.info("No hay administradores registrados.")
     elif menu == "Alta Nuevo Socio":
         st.header("Registrar Nuevo Miembro")
         with st.form("alta_form"):
