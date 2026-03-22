@@ -147,7 +147,7 @@ def login_page():
     # Banner superior
     st.image(IMAGE_URL, use_container_width=True)
     
-    st.markdown("<h1 style='text-align: center; color: #00D4FF;'>⚡ GIMNASIO ULTRA ⚡</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: #00D4FF;'> GIMNASIO ULTRA </h1>", unsafe_allow_html=True)
     _, col, _ = st.columns([1, 1, 1])
     with col:
         with st.container(border=True):
