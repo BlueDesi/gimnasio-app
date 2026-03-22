@@ -243,28 +243,81 @@ def admin_dashboard():
                 else: st.error("Error al registrar. Verifique los datos.")
 
     elif menu == "Gestión Usuarios":
-        st.header("Modificar / Eliminar Socio")
-        bus_val = st.text_input("Buscar por ID o DNI para editar")
-        if st.button("BUSCAR"):
-            res = api_call("GET", "Usuarios/socios")
-            found = next((s for s in res.json() if str(s['id']) == bus_val or str(s['dni']) == bus_val), None)
-            if found: st.session_state.edit_user = found
-            else: st.warning("No encontrado.")
+        st.header("Gestión de Personal y Socios")
         
-        if st.session_state.edit_user:
-            u = st.session_state.edit_user
-            with st.form("edit_form"):
-                st.write(f"Editando Socio ID: {u['id']}")
-                n, a = st.text_input("Nombre", value=u['nombre']), st.text_input("Apellido", value=u['apellido'])
-                d, e = st.text_input("DNI", value=u['dni']), st.text_input("Email", value=u['email'])
-                p = st.text_input("Nueva Contraseña (requerida para guardar)", type="password")
-                if st.form_submit_button("GUARDAR CAMBIOS"):
-                    payload = {"id": u['id'], "nombre": n, "apellido": a, "dni": d, "email": e, "password": p, "rolId": 3, "fechaNacimiento": u.get('fechaNacimiento', "2000-01-01")}
-                    if api_call("PUT", f"Usuarios/{u['id']}", payload).status_code in [200, 204]:
-                        st.success("Datos actualizados"); st.session_state.edit_user = None; st.rerun()
-            if st.button("❌ ELIMINAR SOCIO"):
-                if api_call("DELETE", f"Usuarios/{u['id']}").status_code in [200, 204]:
-                    st.success("Socio eliminado"); st.session_state.edit_user = None; st.rerun()
+        # Pestañas para organizar el trabajo del Admin
+        tab1, tab2 = st.tabs(["👥 Buscar/Editar Usuario", "➕ Alta Staff (Admin/Empleado)"])
+
+        with tab1:
+            bus_val = st.text_input("Buscar por ID o DNI para editar/eliminar")
+            if st.button("BUSCAR USUARIO"):
+                # Buscamos en la lista general de usuarios
+                res = api_call("GET", "Usuarios")
+                if res and res.status_code == 200:
+                    found = next((s for s in res.json() if str(s['id']) == bus_val or str(s['dni']) == bus_val), None)
+                    if found: st.session_state.edit_user = found
+                    else: st.warning("Usuario no encontrado.")
+
+            if st.session_state.edit_user:
+                u = st.session_state.edit_user
+                with st.form("edit_form_global"):
+                    st.subheader(f"Modificando: {u['nombre']} (Rol: {u['rolNombre']})")
+                    c1, c2 = st.columns(2)
+                    n = c1.text_input("Nombre", value=u['nombre'])
+                    a = c2.text_input("Apellido", value=u['apellido'])
+                    d = c1.text_input("DNI", value=u['dni'])
+                    e = c2.text_input("Email", value=u['email'])
+                    p = st.text_input("Contraseña (Dejar vacío para no cambiar)", type="password")
+                    
+                    # El admin puede cambiar el rol de cualquiera
+                    roles_map = {"Admin": 1, "Empleado": 2, "Socio": 3}
+                    current_rol_idx = list(roles_map.keys()).index(u['rolNombre']) if u['rolNombre'] in roles_map else 2
+                    nuevo_rol = st.selectbox("Asignar Cargo", options=list(roles_map.keys()), index=current_rol_idx)
+
+                    if st.form_submit_button("GUARDAR CAMBIOS"):
+                        payload = {
+                            "id": u['id'], "nombre": n, "apellido": a, "dni": d, 
+                            "email": e, "password": p if p else "no_change", # Ajustar según tu API
+                            "rolId": roles_map[nuevo_rol], 
+                            "fechaNacimiento": u.get('fechaNacimiento', "2000-01-01")
+                        }
+                        if api_call("PUT", f"Usuarios/{u['id']}", payload).status_code in [200, 204]:
+                            st.success("Usuario actualizado correctamente."); st.session_state.edit_user = None; st.rerun()
+
+                if st.button("❌ ELIMINAR USUARIO DEFINITIVAMENTE"):
+                    if api_call("DELETE", f"Usuarios/{u['id']}").status_code in [200, 204]:
+                        st.success("Usuario eliminado"); st.session_state.edit_user = None; st.rerun()
+
+        with tab2:
+            # Esta sección es crítica para la seguridad JWT
+            st.subheader("Registrar nuevo miembro del Staff")
+            with st.form("alta_staff"):
+                st.info("⚠️ Los usuarios creados aquí tendrán acceso al panel de control.")
+                c1, c2 = st.columns(2)
+                st_n = c1.text_input("Nombre*")
+                st_a = c2.text_input("Apellido*")
+                st_d = c1.text_input("DNI*")
+                st_e = c2.text_input("Email Corporativo*")
+                st_p = st.text_input("Contraseña de Acceso*", type="password")
+                
+                # Selección de Rol
+                cargo = st.radio("Cargo en el Sistema", ["Empleado", "Admin"], horizontal=True)
+                rol_id = 1 if cargo == "Admin" else 2
+                
+                if st.form_submit_button("CREAR ACCESO STAFF"):
+                    if all([st_n, st_a, st_d, st_e, st_p]):
+                        payload = {
+                            "nombre": st_n, "apellido": st_a, "dni": st_d, 
+                            "email": st_e, "password": st_p, "rolId": rol_id, 
+                            "fechaNacimiento": "2000-01-01"
+                        }
+                        res = api_call("POST", "Usuarios", payload)
+                        if res and res.status_code in [200, 201]:
+                            st.success(f"¡Éxito! {st_n} ahora es {cargo}.")
+                        else:
+                            st.error("Error al crear. El email o DNI ya podrían existir.")
+                    else:
+                        st.warning("Completar todos los campos obligatorios.")
 
     elif menu == "Cargar Cuota":
         st.header("Renovación de Membresía")
