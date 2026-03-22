@@ -214,7 +214,7 @@ def admin_dashboard():
                     if not socio['membresiaVigente']: st.error("ACCESO DENEGADO - MEMBRESÍA VENCIDA")
                 else: st.error("Socio no encontrado.")
 
-elif menu == "Lista de Miembros":
+     elif menu == "Lista de Miembros":
         st.header("Visualización de Personal y Socios")
         
         # Selector de categoría mediante pestañas
