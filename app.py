@@ -64,8 +64,7 @@ def login_page():
                     st.session_state.token = data["token"]
                     st.session_state.user_data = data["usuario"]
                     st.rerun()
-                else:
-                    st.error("Acceso Denegado")
+                else: st.error("Acceso Denegado")
 
 # --- VISTA: SOCIO ---
 def socio_dashboard():
@@ -89,25 +88,30 @@ def admin_dashboard():
 
     if menu == "Molinete":
         st.header("Control de Acceso")
-        dni_in = st.text_input("DNI del Socio")
+        bus_val = st.text_input("Ingrese ID o DNI del Socio")
         if st.button("VALIDAR ENTRADA"):
             res = api_call("GET", "Usuarios/socios")
             if res and res.status_code == 200:
-                socio = next((s for s in res.json() if str(s['dni']) == dni_in), None)
+                socio = next((s for s in res.json() if str(s['dni']) == bus_val or str(s['id']) == bus_val), None)
                 if socio:
                     color_m = "#00D4FF" if socio['membresiaVigente'] else "#FF0000"
-                    st.markdown(f'<div class="molinete-container" style="border-color: {color_m}"><div style="font-size: 45px; font-weight: 900;">{socio["nombre"]} {socio["apellido"]}</div><div style="font-size: 25px;">DNI: {socio["dni"]}</div><div style="font-size: 35px; color: {color_m}; font-weight: bold;">{socio["diasRestantes"]} DÍAS RESTANTES</div></div>', unsafe_allow_html=True)
-                else: st.error("No existe un socio con ese DNI.")
+                    st.markdown(f"""
+                        <div class="molinete-container" style="border-color: {color_m}">
+                            <div style="font-size: 45px; font-weight: 900;">{socio['nombre']} {socio['apellido']}</div>
+                            <div style="font-size: 20px;">ID: {socio['id']} | DNI: {socio['dni']}</div>
+                            <div style="font-size: 35px; color: {color_m}; font-weight: bold;">{socio['diasRestantes']} DÍAS RESTANTES</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                else: st.error("Socio no encontrado.")
 
     elif menu == "Lista de Miembros":
         st.header("Visualización de Socios")
         res = api_call("GET", "Usuarios/socios")
         if res and res.status_code == 200:
-            socios = res.json()
+            df = pd.DataFrame(res.json())
             c1, c2 = st.columns([1, 2])
-            filtro = c1.selectbox("Filtrar por estado", ["Todos", "Activos", "Inactivos"])
+            filtro = c1.selectbox("Estado", ["Todos", "Activos", "Inactivos"])
             busqueda = c2.text_input("🔍 Buscar por ID, DNI o Apellido").lower()
-            df = pd.DataFrame(socios)
             if filtro == "Activos": df = df[df['membresiaVigente'] == True]
             elif filtro == "Inactivos": df = df[df['membresiaVigente'] == False]
             if busqueda:
@@ -117,24 +121,22 @@ def admin_dashboard():
     elif menu == "Alta Nuevo Socio":
         st.header("Registrar Miembro")
         with st.form("alta_form"):
-            col1, col2 = st.columns(2)
-            n = col1.text_input("Nombre")
-            a = col2.text_input("Apellido")
-            d = col1.text_input("DNI")
-            e = col2.text_input("Email")
-            p = st.text_input("Contraseña Temporal", type="password")
+            c1, c2 = st.columns(2)
+            n, a = c1.text_input("Nombre*"), c2.text_input("Apellido*")
+            d, e = c1.text_input("DNI*"), c2.text_input("Email*")
+            p = c1.text_input("Contraseña*", type="password")
+            fn = c2.date_input("Fecha Nacimiento", value=datetime(2000, 1, 1))
             if st.form_submit_button("REGISTRAR"):
-                payload = {"nombre": n, "apellido": a, "dni": d, "email": e, "password": p, "rolId": 3}
-                resp = api_call("POST", "Usuarios/register", payload)
-                if resp and resp.status_code in [200, 201]: st.success("Socio creado correctamente.")
+                payload = {"nombre": n, "apellido": a, "dni": d, "email": e, "password": p, "rolId": 3, "fechaNacimiento": fn.isoformat()}
+                if api_call("POST", "Usuarios", payload).status_code in [200, 201]: st.success("Socio creado!")
                 else: st.error("Error al registrar.")
 
     elif menu == "Gestión Usuarios":
         st.header("Modificar / Eliminar")
-        bus_id = st.text_input("ID del Socio para gestionar")
+        bus_val = st.text_input("Buscar por ID o DNI para editar")
         if st.button("BUSCAR"):
             res = api_call("GET", "Usuarios/socios")
-            found = next((s for s in res.json() if str(s['id']) == bus_id), None)
+            found = next((s for s in res.json() if str(s['id']) == bus_val or str(s['dni']) == bus_val), None)
             if found: st.session_state.edit_user = found
             else: st.warning("No encontrado.")
         
@@ -142,23 +144,16 @@ def admin_dashboard():
             u = st.session_state.edit_user
             with st.form("edit_form"):
                 st.write(f"Editando ID: {u['id']}")
-                n = st.text_input("Nombre", value=u['nombre'])
-                a = st.text_input("Apellido", value=u['apellido'])
-                d = st.text_input("DNI", value=u['dni'])
-                e = st.text_input("Email", value=u['email'])
-                if st.form_submit_button("GUARDAR CAMBIOS"):
-                    # Incluimos el ID en el payload para evitar errores de validación en la API
-                    payload = {"id": u['id'], "nombre": n, "apellido": a, "dni": d, "email": e, "rolId": 3}
-                    resp = api_call("PUT", f"Usuarios/{u['id']}", payload)
-                    if resp and resp.status_code in [200, 204]:
-                        st.success("Actualizado")
-                        st.session_state.edit_user = None
-                        st.rerun()
-            if st.button("❌ ELIMINAR MIEMBRO", type="secondary"):
+                n, a = st.text_input("Nombre", value=u['nombre']), st.text_input("Apellido", value=u['apellido'])
+                d, e = st.text_input("DNI", value=u['dni']), st.text_input("Email", value=u['email'])
+                p = st.text_input("Nueva Contraseña (requerida)", type="password")
+                if st.form_submit_button("GUARDAR"):
+                    payload = {"id": u['id'], "nombre": n, "apellido": a, "dni": d, "email": e, "password": p, "rolId": 3, "fechaNacimiento": u.get('fechaNacimiento', "2000-01-01")}
+                    if api_call("PUT", f"Usuarios/{u['id']}", payload).status_code in [200, 204]:
+                        st.success("Actualizado"); st.session_state.edit_user = None; st.rerun()
+            if st.button("❌ ELIMINAR"):
                 if api_call("DELETE", f"Usuarios/{u['id']}").status_code in [200, 204]:
-                    st.success("Eliminado")
-                    st.session_state.edit_user = None
-                    st.rerun()
+                    st.success("Eliminado"); st.session_state.edit_user = None; st.rerun()
 
     elif menu == "Cargar Cuota":
         st.header("Nueva Membresía")
@@ -170,19 +165,12 @@ def admin_dashboard():
         if c3.button("6 MESES"): meses = 6
         if c4.button("1 AÑO"): meses = 12
         if meses > 0:
-            res = api_call("POST", "Membresias", {"usuarioId": int(sid), "meses": meses})
-            if res and res.status_code in [200, 201]:
-                st.balloons()
-                st.success(f"Activado {meses} mes(es) al ID {sid}")
+            if api_call("POST", "Membresias", {"usuarioId": int(sid), "meses": meses}).status_code in [200, 201]:
+                st.balloons(); st.success(f"Activado {meses} mes(es) al ID {sid}")
 
 # --- RUTEO PRINCIPAL ---
-if st.session_state.get("token") is None:
-    login_page()
+if st.session_state.get("token") is None: login_page()
 else:
-    u_data = st.session_state.get("user_data", {})
-    rol = u_data.get("rolNombre", "").lower()
+    rol = st.session_state.get("user_data", {}).get("rolNombre", "").lower()
     if rol in ["admin", "empleado"]: admin_dashboard()
     else: socio_dashboard()
-
-
-
