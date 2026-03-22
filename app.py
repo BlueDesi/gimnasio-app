@@ -6,26 +6,116 @@ from datetime import datetime
 # --- CONFIGURACIÓN ---
 API_BASE_URL = "https://gimnasio.tryasp.net/api"
 st.set_page_config(page_title="Gimnasio Pro Ultra", layout="wide", page_icon="🏋️‍♂️")
-# --- URL DE LA IMAGEN (DRIVE) ---
-IMAGE_URL = "https://drive.google.com/thumbnail?id=1PsTkl-oaniJO687yUEo8Y5-gyU1YWfDa&sz=w1000"
-# --- RENDERIZADO DEL BANNER ---
-st.image(IMAGE_URL, use_container_width=True)
+
+# --- URL DE LA IMAGEN (DRIVE - FORMATO MINIATURA HD) ---
+IMAGE_URL = "https://drive.google.com/thumbnail?id=1PsTkl-oaniJO687yUEo8Y5-gyU1YWfDa&sz=w1200"
+
 # --- INICIALIZACIÓN ---
 if "token" not in st.session_state: st.session_state.token = None
 if "user_data" not in st.session_state: st.session_state.user_data = {}
 if "edit_user" not in st.session_state: st.session_state.edit_user = None
 
-# --- ESTILOS CSS ---
-st.markdown("""
+# --- ESTILOS CSS (ESTILO NETFLIX / ALTO RENDIMIENTO) ---
+st.markdown(f"""
     <style>
-    .stApp { background-color: #000000; color: #FFFFFF; }
-    .main-header { font-size: 35px; font-weight: 800; color: #00D4FF; text-align: center; margin-bottom: 30px; }
-    .metric-card { background-color: #111111; padding: 25px; border-radius: 15px; border: 2px solid #333333; text-align: center; margin-bottom: 15px; }
-    .metric-label { color: #AAAAAA; font-size: 14px; font-weight: bold; text-transform: uppercase; }
-    .metric-value { font-size: 40px; font-weight: 900; margin-top: 10px; }
-    .molinete-container { background-color: #000000; padding: 40px; border-radius: 20px; border: 4px solid #00D4FF; text-align: center; }
-    .stButton>button { border-radius: 10px; font-weight: bold; transition: 0.3s; height: 3.5em; }
-    input { background-color: #222222 !important; color: white !important; border: 1px solid #444444 !important; }
+    /* Importación de fuentes */
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;700;900&display=swap');
+
+    /* Aplicación general de fuente */
+    html, body, [class*="css"], .stApp {{
+        font-family: 'Inter', sans-serif;
+        background-color: #000000;
+        color: #FFFFFF;
+    }}
+
+    /* Títulos con Bebas Neue */
+    h1, h2, h3, .main-header {{
+        font-family: 'Bebas Neue', sans-serif;
+        letter-spacing: 2px;
+    }}
+
+    .main-header {{ 
+        font-size: 50px; 
+        color: #00D4FF; 
+        text-align: center; 
+        margin-bottom: 30px; 
+        text-transform: uppercase;
+    }}
+
+    /* Estilo de Tarjetas Métricas */
+    .metric-card {{ 
+        background-color: #111111; 
+        padding: 25px; 
+        border-radius: 10px; 
+        border-left: 5px solid #00D4FF; 
+        text-align: center; 
+        margin-bottom: 15px; 
+    }}
+    
+    .metric-label {{ 
+        color: #AAAAAA; 
+        font-size: 12px; 
+        font-weight: 900; 
+        text-transform: uppercase; 
+        letter-spacing: 1px;
+    }}
+    
+    .metric-value {{ 
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 45px; 
+        margin-top: 5px;
+    }}
+
+    /* Contenedor del Molinete */
+    .molinete-container {{ 
+        background-color: #050505; 
+        padding: 40px; 
+        border-radius: 15px; 
+        border: 2px solid #00D4FF; 
+        text-align: center;
+        box-shadow: 0px 0px 20px rgba(0, 212, 255, 0.2);
+    }}
+
+    /* Botones estilo UI moderna */
+    .stButton>button {{ 
+        border-radius: 4px; 
+        font-family: 'Inter', sans-serif;
+        font-weight: 900; 
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: 0.3s; 
+        height: 3.5em; 
+        background-color: #00D4FF;
+        color: black;
+        border: none;
+    }}
+    
+    .stButton>button:hover {{
+        background-color: #00b8e6;
+        color: white;
+        transform: scale(1.02);
+    }}
+
+    /* Rojo para el botón de Salir */
+    div.stButton > button:first-child[aria-label="SALIR"], 
+    div.stButton > button:first-child[aria-label="CERRAR SESIÓN"],
+    div.stButton > button:first-child[aria-label="❌ ELIMINAR"] {{
+        background-color: #E50914 !important;
+        color: white !important;
+    }}
+
+    /* Inputs oscuros */
+    input {{ 
+        background-color: #222222 !important; 
+        color: white !important; 
+        border: none !important;
+        border-bottom: 2px solid #444444 !important;
+        border-radius: 4px !important;
+    }}
+    
+    input:focus {{
+        border-bottom: 2px solid #00D4FF !important;
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -54,10 +144,14 @@ def logout():
 
 # --- VISTA: LOGIN ---
 def login_page():
+    # Banner superior
+    st.image(IMAGE_URL, use_container_width=True)
+    
     st.markdown("<h1 style='text-align: center; color: #00D4FF;'>⚡ GIMNASIO ULTRA ⚡</h1>", unsafe_allow_html=True)
     _, col, _ = st.columns([1, 1, 1])
     with col:
         with st.container(border=True):
+            st.markdown("<h3 style='text-align: center;'>Acceso al Sistema</h3>", unsafe_allow_html=True)
             email = st.text_input("Email")
             password = st.text_input("Contraseña", type="password")
             if st.button("INGRESAR AL SISTEMA", use_container_width=True):
@@ -71,23 +165,35 @@ def login_page():
 
 # --- VISTA: SOCIO ---
 def socio_dashboard():
+    st.image(IMAGE_URL, use_container_width=True)
     user = st.session_state.user_data
     st.markdown(f"<div class='main-header'>Panel de Socio: {user.get('nombre')}</div>", unsafe_allow_html=True)
+    
     c1, c2, c3 = st.columns(3)
-    with c1: st.markdown(f"<div class='metric-card'><span class='metric-label'>Socio</span><div class='metric-value'>{user.get('nombre')} {user.get('apellido')}</div><p>DNI: {user.get('dni')}</p></div>", unsafe_allow_html=True)
+    with c1: 
+        st.markdown(f"<div class='metric-card'><span class='metric-label'>Socio</span><div class='metric-value'>{user.get('nombre')} {user.get('apellido')}</div><p style='color:#666'>DNI: {user.get('dni')}</p></div>", unsafe_allow_html=True)
+    
     vigente = user.get("membresiaVigente", False)
     color_v = "#00FF00" if vigente else "#FF0000"
-    with c2: st.markdown(f"<div class='metric-card'><span class='metric-label'>Membresía</span><div class='metric-value' style='color:{color_v}'>{'ACTIVA' if vigente else 'VENCIDA'}</div></div>", unsafe_allow_html=True)
-    with c3: st.markdown(f"<div class='metric-card'><span class='metric-label'>Días Restantes</span><div class='metric-value' style='color:#00D4FF'>{user.get('diasRestantes', 0)}</div></div>", unsafe_allow_html=True)
+    with c2: 
+        st.markdown(f"<div class='metric-card'><span class='metric-label'>Membresía</span><div class='metric-value' style='color:{color_v}'>{'ACTIVA' if vigente else 'VENCIDA'}</div></div>", unsafe_allow_html=True)
+    
+    with c3: 
+        st.markdown(f"<div class='metric-card'><span class='metric-label'>Días Restantes</span><div class='metric-value' style='color:#00D4FF'>{user.get('diasRestantes', 0)}</div></div>", unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
     if st.button("CERRAR SESIÓN", use_container_width=True): logout()
 
 # --- VISTA: ADMIN / EMPLEADO ---
 def admin_dashboard():
     with st.sidebar:
         st.title("🛡️ STAFF")
-        menu = st.radio("Acciones", ["Molinete", "Lista de Miembros", "Alta Nuevo Socio", "Gestión Usuarios", "Cargar Cuota"])
+        menu = st.radio("Menú Principal", ["Molinete", "Lista de Miembros", "Alta Nuevo Socio", "Gestión Usuarios", "Cargar Cuota"])
         st.divider()
-        if st.button("SALIR", type="primary"): logout()
+        if st.button("SALIR", type="primary", use_container_width=True): logout()
+
+    # Banner en el cuerpo principal
+    st.image(IMAGE_URL, use_container_width=True)
 
     if menu == "Molinete":
         st.header("Control de Acceso")
@@ -100,11 +206,12 @@ def admin_dashboard():
                     color_m = "#00D4FF" if socio['membresiaVigente'] else "#FF0000"
                     st.markdown(f"""
                         <div class="molinete-container" style="border-color: {color_m}">
-                            <div style="font-size: 45px; font-weight: 900;">{socio['nombre']} {socio['apellido']}</div>
-                            <div style="font-size: 20px;">ID: {socio['id']} | DNI: {socio['dni']}</div>
-                            <div style="font-size: 35px; color: {color_m}; font-weight: bold;">{socio['diasRestantes']} DÍAS RESTANTES</div>
+                            <div style="font-family: 'Bebas Neue'; font-size: 55px;">{socio['nombre']} {socio['apellido']}</div>
+                            <div style="font-size: 20px; color: #AAA;">ID: {socio['id']} | DNI: {socio['dni']}</div>
+                            <div style="font-family: 'Bebas Neue'; font-size: 40px; color: {color_m};">{socio['diasRestantes']} DÍAS RESTANTES</div>
                         </div>
                     """, unsafe_allow_html=True)
+                    if not socio['membresiaVigente']: st.error("ACCESO DENEGADO - MEMBRESÍA VENCIDA")
                 else: st.error("Socio no encontrado.")
 
     elif menu == "Lista de Miembros":
@@ -113,7 +220,7 @@ def admin_dashboard():
         if res and res.status_code == 200:
             df = pd.DataFrame(res.json())
             c1, c2 = st.columns([1, 2])
-            filtro = c1.selectbox("Estado", ["Todos", "Activos", "Inactivos"])
+            filtro = c1.selectbox("Filtrar por Estado", ["Todos", "Activos", "Inactivos"])
             busqueda = c2.text_input("🔍 Buscar por ID, DNI o Apellido").lower()
             if filtro == "Activos": df = df[df['membresiaVigente'] == True]
             elif filtro == "Inactivos": df = df[df['membresiaVigente'] == False]
@@ -122,20 +229,21 @@ def admin_dashboard():
             st.dataframe(df[['id', 'nombre', 'apellido', 'dni', 'email', 'membresiaVigente', 'diasRestantes']], use_container_width=True)
 
     elif menu == "Alta Nuevo Socio":
-        st.header("Registrar Miembro")
+        st.header("Registrar Nuevo Miembro")
         with st.form("alta_form"):
             c1, c2 = st.columns(2)
             n, a = c1.text_input("Nombre*"), c2.text_input("Apellido*")
             d, e = c1.text_input("DNI*"), c2.text_input("Email*")
             p = c1.text_input("Contraseña*", type="password")
             fn = c2.date_input("Fecha Nacimiento", value=datetime(2000, 1, 1))
-            if st.form_submit_button("REGISTRAR"):
+            if st.form_submit_button("REGISTRAR SOCIO"):
                 payload = {"nombre": n, "apellido": a, "dni": d, "email": e, "password": p, "rolId": 3, "fechaNacimiento": fn.isoformat()}
-                if api_call("POST", "Usuarios", payload).status_code in [200, 201]: st.success("Socio creado!")
-                else: st.error("Error al registrar.")
+                if api_call("POST", "Usuarios", payload).status_code in [200, 201]: 
+                    st.success("¡Socio registrado con éxito!")
+                else: st.error("Error al registrar. Verifique los datos.")
 
     elif menu == "Gestión Usuarios":
-        st.header("Modificar / Eliminar")
+        st.header("Modificar / Eliminar Socio")
         bus_val = st.text_input("Buscar por ID o DNI para editar")
         if st.button("BUSCAR"):
             res = api_call("GET", "Usuarios/socios")
@@ -146,21 +254,22 @@ def admin_dashboard():
         if st.session_state.edit_user:
             u = st.session_state.edit_user
             with st.form("edit_form"):
-                st.write(f"Editando ID: {u['id']}")
+                st.write(f"Editando Socio ID: {u['id']}")
                 n, a = st.text_input("Nombre", value=u['nombre']), st.text_input("Apellido", value=u['apellido'])
                 d, e = st.text_input("DNI", value=u['dni']), st.text_input("Email", value=u['email'])
-                p = st.text_input("Nueva Contraseña (requerida)", type="password")
-                if st.form_submit_button("GUARDAR"):
+                p = st.text_input("Nueva Contraseña (requerida para guardar)", type="password")
+                if st.form_submit_button("GUARDAR CAMBIOS"):
                     payload = {"id": u['id'], "nombre": n, "apellido": a, "dni": d, "email": e, "password": p, "rolId": 3, "fechaNacimiento": u.get('fechaNacimiento', "2000-01-01")}
                     if api_call("PUT", f"Usuarios/{u['id']}", payload).status_code in [200, 204]:
-                        st.success("Actualizado"); st.session_state.edit_user = None; st.rerun()
-            if st.button("❌ ELIMINAR"):
+                        st.success("Datos actualizados"); st.session_state.edit_user = None; st.rerun()
+            if st.button("❌ ELIMINAR SOCIO"):
                 if api_call("DELETE", f"Usuarios/{u['id']}").status_code in [200, 204]:
-                    st.success("Eliminado"); st.session_state.edit_user = None; st.rerun()
+                    st.success("Socio eliminado"); st.session_state.edit_user = None; st.rerun()
 
     elif menu == "Cargar Cuota":
-        st.header("Nueva Membresía")
-        sid = st.number_input("ID del Socio", min_value=1, step=1)
+        st.header("Renovación de Membresía")
+        sid = st.number_input("ID del Socio a renovar", min_value=1, step=1)
+        st.markdown("Seleccione el plan de suscripción:")
         c1, c2, c3, c4 = st.columns(4)
         meses = 0
         if c1.button("1 MES"): meses = 1
@@ -169,11 +278,15 @@ def admin_dashboard():
         if c4.button("1 AÑO"): meses = 12
         if meses > 0:
             if api_call("POST", "Membresias", {"usuarioId": int(sid), "meses": meses}).status_code in [200, 201]:
-                st.balloons(); st.success(f"Activado {meses} mes(es) al ID {sid}")
+                st.balloons()
+                st.success(f"Membresía activada: {meses} mes(es) añadidos al socio ID {sid}")
 
 # --- RUTEO PRINCIPAL ---
-if st.session_state.get("token") is None: login_page()
+if st.session_state.get("token") is None: 
+    login_page()
 else:
     rol = st.session_state.get("user_data", {}).get("rolNombre", "").lower()
-    if rol in ["admin", "empleado"]: admin_dashboard()
-    else: socio_dashboard()
+    if rol in ["admin", "empleado"]: 
+        admin_dashboard()
+    else: 
+        socio_dashboard()
