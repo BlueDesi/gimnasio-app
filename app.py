@@ -7,8 +7,7 @@ from datetime import datetime
 API_BASE_URL = "https://gimnasio.tryasp.net/api"
 st.set_page_config(page_title="Gimnasio Pro Ultra", layout="wide", page_icon="🏋️‍♂️")
 # --- URL DE LA IMAGEN (DRIVE) ---
-IMAGE_URL = "https://drive.google.com/uc?export=download&id=1PsTkl-oaniJO687yUEo8Y5-gyU1YWfDa"
-
+IMAGE_URL = "https://drive.google.com/thumbnail?id=1PsTkl-oaniJO687yUEo8Y5-gyU1YWfDa&sz=w1000"
 # --- RENDERIZADO DEL BANNER ---
 st.image(IMAGE_URL, use_container_width=True)
 # --- INICIALIZACIÓN ---
