@@ -6,7 +6,11 @@ from datetime import datetime
 # --- CONFIGURACIÓN ---
 API_BASE_URL = "https://gimnasio.tryasp.net/api"
 st.set_page_config(page_title="Gimnasio Pro Ultra", layout="wide", page_icon="🏋️‍♂️")
+# --- URL DE LA IMAGEN (DRIVE) ---
+IMAGE_URL = "https://drive.google.com/uc?export=download&id=1PsTkl-oaniJO687yUEo8Y5-gyU1YWfDa"
 
+# --- RENDERIZADO DEL BANNER ---
+st.image(IMAGE_URL, use_container_width=True)
 # --- INICIALIZACIÓN ---
 if "token" not in st.session_state: st.session_state.token = None
 if "user_data" not in st.session_state: st.session_state.user_data = {}
