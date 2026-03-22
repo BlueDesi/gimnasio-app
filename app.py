@@ -107,6 +107,7 @@ def admin_dashboard():
     with st.sidebar:
         st.title("🛡️ STAFF")
         menu = st.radio("Menú", ["Molinete", "Lista de Miembros", "Alta Nuevo Socio", "Gestión Usuarios", "Cargar Cuota"])
+        st.divider()
         if st.button("SALIR"): logout()
 
     st.image(IMAGE_URL, use_container_width=True)
@@ -134,41 +135,67 @@ def admin_dashboard():
                 if bus: df = df[df['dni'].astype(str).str.contains(bus) | df['apellido'].str.lower().str.contains(bus)]
                 st.dataframe(df[['id', 'nombre', 'apellido', 'dni', 'membresiaVigente', 'diasRestantes']], use_container_width=True)
         with t2:
-            res = api_call("GET", "Usuarios/empleados")
-            if res and res.status_code == 200:
-                st.dataframe(pd.DataFrame(res.json())[['id', 'nombre', 'apellido', 'email']], use_container_width=True)
+            res_e = api_call("GET", "Usuarios/empleados")
+            if res_e and res_e.status_code == 200:
+                st.dataframe(pd.DataFrame(res_e.json())[['id', 'nombre', 'apellido', 'email', 'rolNombre']], use_container_width=True)
         with t3:
-            res = api_call("GET", "Usuarios/admins")
-            if res and res.status_code == 200:
-                st.dataframe(pd.DataFrame(res.json())[['id', 'nombre', 'apellido', 'email']], use_container_width=True)
+            res_a = api_call("GET", "Usuarios/admins")
+            if res_a and res_a.status_code == 200:
+                st.dataframe(pd.DataFrame(res_a.json())[['id', 'nombre', 'apellido', 'email', 'rolNombre']], use_container_width=True)
 
     elif menu == "Alta Nuevo Socio":
         st.header("Nuevo Socio")
         with st.form("f1"):
             c1, c2 = st.columns(2)
-            n, a = c1.text_input("Nombre"), c2.text_input("Apellido")
-            d, e = c1.text_input("DNI"), c2.text_input("Email")
-            p = st.text_input("Password", type="password")
+            n, a = c1.text_input("Nombre*"), c2.text_input("Apellido*")
+            d, e = c1.text_input("DNI*"), c2.text_input("Email*")
+            p = st.text_input("Password*", type="password")
             if st.form_submit_button("REGISTRAR"):
-                payload = {"nombre": n, "apellido": a, "dni": d, "email": e, "password": p, "rolId": 3, "fechaNacimiento": "2000-01-01"}
-                if api_call("POST", "Usuarios", payload).status_code in [200, 201]: st.success("OK")
+                if all([n, a, d, e, p]):
+                    payload = {"nombre": n, "apellido": a, "dni": d, "email": e, "password": p, "rolId": 3, "fechaNacimiento": "2000-01-01"}
+                    if api_call("POST", "Usuarios", payload).status_code in [200, 201]: st.success("Socio creado")
+                else: st.warning("Complete los campos obligatorios")
 
     elif menu == "Gestión Usuarios":
-        st.header("Editar / Eliminar")
-        bus_u = st.text_input("ID o DNI")
-        if st.button("BUSCAR"):
-            res = api_call("GET", "Usuarios")
-            if res:
-                st.session_state.edit_user = next((s for s in res.json() if str(s['id']) == bus_u or str(s['dni']) == bus_u), None)
+        st.header("Administración de Cuentas")
+        tab_ed, tab_staff = st.tabs(["✏️ Editar / Eliminar", "➕ Alta Staff (Admin/Empleado)"])
         
-        if st.session_state.edit_user:
-            u = st.session_state.edit_user
-            with st.form("f2"):
-                ne, ae = st.text_input("Nombre", u['nombre']), st.text_input("Apellido", u['apellido'])
-                if st.form_submit_button("GUARDAR"):
-                    u.update({"nombre": ne, "apellido": ae})
-                    if api_call("PUT", f"Usuarios/{u['id']}", u).status_code in [200, 204]: 
-                        st.success("Actualizado"); st.rerun()
+        with tab_ed:
+            bus_u = st.text_input("Buscar por ID o DNI")
+            if st.button("BUSCAR"):
+                res = api_call("GET", "Usuarios")
+                if res:
+                    st.session_state.edit_user = next((s for s in res.json() if str(s['id']) == bus_u or str(s['dni']) == bus_u), None)
+            
+            if st.session_state.edit_user:
+                u = st.session_state.edit_user
+                with st.form("f_edit"):
+                    st.subheader(f"Editando: {u['nombre']}")
+                    ne = st.text_input("Nombre", u['nombre'])
+                    ae = st.text_input("Apellido", u['apellido'])
+                    if st.form_submit_button("GUARDAR CAMBIOS"):
+                        u.update({"nombre": ne, "apellido": ae})
+                        if api_call("PUT", f"Usuarios/{u['id']}", u).status_code in [200, 204]:
+                            st.success("Cambios guardados"); st.session_state.edit_user = None; st.rerun()
+                if st.button("❌ ELIMINAR DEFINITIVAMENTE"):
+                    if api_call("DELETE", f"Usuarios/{u['id']}").status_code in [200, 204]:
+                        st.success("Borrado"); st.session_state.edit_user = None; st.rerun()
+
+        with tab_staff:
+            with st.form("f_staff"):
+                st.subheader("Nuevo Miembro del Staff")
+                sn, sa = st.columns(2)
+                n_s = sn.text_input("Nombre")
+                a_s = sa.text_input("Apellido")
+                d_s, e_s = st.columns(2)
+                dni_s = d_s.text_input("DNI")
+                em_s = e_s.text_input("Email")
+                pas_s = st.text_input("Password", type="password")
+                rol_s = st.radio("Rol", ["Empleado", "Admin"], horizontal=True)
+                if st.form_submit_button("CREAR ACCESO"):
+                    rid = 1 if rol_s == "Admin" else 2
+                    payload = {"nombre": n_s, "apellido": a_s, "dni": dni_s, "email": em_s, "password": pas_s, "rolId": rid, "fechaNacimiento": "1990-01-01"}
+                    if api_call("POST", "Usuarios", payload).status_code in [200, 201]: st.success("Staff Creado")
 
     elif menu == "Cargar Cuota":
         st.header("Cobro de Cuota")
@@ -178,8 +205,12 @@ def admin_dashboard():
             if api_call("POST", "Membresias", {"usuarioId": int(sid), "meses": m}).status_code in [200, 201]:
                 st.balloons(); st.success("Pago acreditado")
 
-# --- MAIN ---
-if st.session_state.token is None: login_page()
+# --- MAIN RUNNER ---
+if st.session_state.token is None:
+    login_page()
 else:
-    rol = st.session_state.user_data.get("rolNombre", "").lower()
-    admin_dashboard() if rol in ["admin", "empleado"] else socio_dashboard()
+    u_rol = st.session_state.user_data.get("rolNombre", "").lower()
+    if u_rol in ["admin", "empleado"]:
+        admin_dashboard()
+    else:
+        socio_dashboard()
